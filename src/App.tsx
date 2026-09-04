@@ -13,6 +13,14 @@ function App() {
       windSpeed: number;
     } | null>(null);
 
+  const [forecast, setForecast] = useState<
+  {
+    date: string;
+    condition: string;
+    temp: number;
+  }[]
+>([]);  
+
   const [error, setError] = useState("");
   
   const getWeatherIcon = (condition: string) => {
@@ -75,24 +83,54 @@ function App() {
         humidity: data.main.humidity,
         windSpeed: data.wind.speed,
       });
-    } catch {
-      setWeather(null);
-      setError("通信に失敗しました");
-    } finally {
+      const forecastResponse = await fetch(
+        `https://api.openweathermap.org/data/2.5/forecast?q=${city}&appid=${apiKey}&units=metric&lang=ja`
+      );
+
+      const forecastData = await forecastResponse.json();
+
+      if (!forecastResponse.ok) {
+        setForecast([]);
+        if (!response.ok) {
+          setWeather(null);
+          setForecast([]);
+          setError("都市名が見つかりませんでした");
+          return;
+        }
+        return;
+      }
+
+      const dailyForecast = forecastData.list
+        .filter((item: any) => item.dt_txt.includes("12:00:00"))
+        .slice(0, 5)
+        .map((item: any) => ({
+          date: new Date(item.dt_txt).toLocaleDateString("ja-JP", {
+            weekday: "short",
+          }),
+          condition: item.weather[0].main,
+          temp: Math.round(item.main.temp),
+        }));
+
+    setForecast(dailyForecast);
+        } catch {
+          setWeather(null);
+          setForecast([]);
+          setError("通信に失敗しました");
+        } finally {
+          setLoading(false);
+        }
+      };
+
+    const handleCurrentLocationSearch = () => {
+    setLoading(true);
+    setError("");
+
+    if (!navigator.geolocation) {
       setLoading(false);
+      setWeather(null);
+      setError("このブラウザでは位置情報が利用できません");
+      return;
     }
-  };
-
-  const handleCurrentLocationSearch = () => {
-  setLoading(true);
-  setError("");
-
-  if (!navigator.geolocation) {
-    setLoading(false);
-    setWeather(null);
-    setError("このブラウザでは位置情報が利用できません");
-    return;
-  }
 
   navigator.geolocation.getCurrentPosition(
     async (position) => {
@@ -191,6 +229,35 @@ function App() {
     </div>
   </div>
         )}
+
+        {forecast.length > 0 && (
+          <div className="mt-6 rounded-xl bg-white p-4">
+            <h2 className="mb-4 text-xl font-bold text-gray-800">
+              5日間予報
+            </h2>
+
+            <div className="space-y-3">
+              {forecast.map((item) => (
+                <div
+                  key={item.date}
+                  className="flex items-center justify-between rounded-lg bg-sky-50 p-3"
+                >
+                  <span className="font-semibold text-gray-700">
+                    {item.date}
+                  </span>
+
+                  <span className="text-2xl">
+                    {getWeatherIcon(item.condition)}
+                  </span>
+
+                  <span className="font-bold text-sky-600">
+                    {item.temp}℃
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+)}
       </div>
     </div>
   );
