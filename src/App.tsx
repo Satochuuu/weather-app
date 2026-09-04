@@ -83,6 +83,58 @@ function App() {
     }
   };
 
+  const handleCurrentLocationSearch = () => {
+  setLoading(true);
+  setError("");
+
+  if (!navigator.geolocation) {
+    setLoading(false);
+    setWeather(null);
+    setError("このブラウザでは位置情報が利用できません");
+    return;
+  }
+
+  navigator.geolocation.getCurrentPosition(
+    async (position) => {
+      try {
+        const apiKey = import.meta.env.VITE_WEATHER_API_KEY;
+        const { latitude, longitude } = position.coords;
+
+        const response = await fetch(
+          `https://api.openweathermap.org/data/2.5/weather?lat=${latitude}&lon=${longitude}&appid=${apiKey}&units=metric&lang=ja`
+        );
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          setWeather(null);
+          setError("現在地の天気を取得できませんでした");
+          return;
+        }
+
+        setWeather({
+          name: data.name,
+          condition: data.weather[0].main,
+          description: data.weather[0].description,
+          temp: Math.round(data.main.temp),
+          humidity: data.main.humidity,
+          windSpeed: data.wind.speed,
+        });
+      } catch {
+        setWeather(null);
+        setError("通信に失敗しました");
+      } finally {
+        setLoading(false);
+      }
+    },
+    () => {
+      setLoading(false);
+      setWeather(null);
+      setError("位置情報の取得が許可されませんでした");
+    }
+  );
+};
+
   return (
     <div className="min-h-screen bg-sky-100 flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl shadow-lg p-8 w-full max-w-md">
@@ -94,6 +146,7 @@ function App() {
           city={city}
           onCityChange={setCity}
           onSearch={handleSearch}
+          onCurrentLocationSearch={handleCurrentLocationSearch}
           loading={loading}
         />
 
