@@ -1,6 +1,16 @@
 import { useState } from "react";
 import SearchForm from "./components/SearchForm";
 
+type ForecastApiItem = {
+  dt_txt: string;
+  weather: {
+    main: string;
+  }[];
+  main: {
+    temp: number;
+  };
+};
+
 function App() {
   const [city, setCity] = useState("");
 
@@ -53,7 +63,7 @@ function App() {
   }
 };  
 
-  const createDailyForecast = (forecastList: any[]) => {
+  const createDailyForecast = (forecastList: ForecastApiItem[]) => {
   return forecastList
     .filter((item) => item.dt_txt.includes("12:00:00"))
     .slice(0, 5)
