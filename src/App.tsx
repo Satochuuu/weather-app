@@ -1,5 +1,12 @@
 import { useState } from "react";
 import SearchForm from "./components/SearchForm";
+import ForecastList from "./components/ForecastList";
+
+type ForecastItem = {
+  date: string;
+  condition: string;
+  temp: number;
+};
 
 type ForecastApiItem = {
   dt_txt: string;
@@ -23,13 +30,7 @@ function App() {
       windSpeed: number;
     } | null>(null);
 
-  const [forecast, setForecast] = useState<
-  {
-    date: string;
-    condition: string;
-    temp: number;
-  }[]
->([]);  
+  const [forecast, setForecast] = useState<ForecastItem[]>([]);
 
   const [error, setError] = useState("");
   
@@ -37,44 +38,37 @@ function App() {
   switch (condition) {
     case "Clear":
       return "☀️";
-
     case "Clouds":
       return "☁️";
-
     case "Rain":
       return "🌧️";
-
     case "Drizzle":
       return "🌦️";
-
     case "Thunderstorm":
       return "⛈️";
-
     case "Snow":
       return "❄️";
-
     case "Mist":
     case "Fog":
     case "Haze":
       return "🌫️";
-
     default:
       return "🌤️";
   }
-};  
+};
 
   const createDailyForecast = (forecastList: ForecastApiItem[]) => {
-  return forecastList
-    .filter((item) => item.dt_txt.includes("12:00:00"))
-    .slice(0, 5)
-    .map((item) => ({
-      date: new Date(item.dt_txt).toLocaleDateString("ja-JP", {
-        weekday: "short",
-      }),
-      condition: item.weather[0].main,
-      temp: Math.round(item.main.temp),
-    }));
-};
+    return forecastList
+      .filter((item) => item.dt_txt.includes("12:00:00"))
+      .slice(0, 5)
+      .map((item) => ({
+        date: new Date(item.dt_txt).toLocaleDateString("ja-JP", {
+          weekday: "short",
+        }),
+        condition: item.weather[0].main,
+        temp: Math.round(item.main.temp),
+      }));
+  };
 
   const [loading, setLoading] = useState(false);
   
@@ -256,34 +250,10 @@ function App() {
   </div>
         )}
 
-        {forecast.length > 0 && (
-          <div className="mt-6 rounded-xl bg-white p-4">
-            <h2 className="mb-4 text-xl font-bold text-gray-800">
-              5日間予報
-            </h2>
-
-            <div className="space-y-3">
-              {forecast.map((item) => (
-                <div
-                  key={item.date}
-                  className="flex items-center justify-between rounded-lg bg-sky-50 p-3"
-                >
-                  <span className="font-semibold text-gray-700">
-                    {item.date}
-                  </span>
-
-                  <span className="text-2xl">
-                    {getWeatherIcon(item.condition)}
-                  </span>
-
-                  <span className="font-bold text-sky-600">
-                    {item.temp}℃
-                  </span>
-                </div>
-              ))}
-            </div>
-          </div>
-)}
+        <ForecastList
+          forecast={forecast}
+          getWeatherIcon={getWeatherIcon}
+        />
       </div>
     </div>
   );
