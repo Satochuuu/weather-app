@@ -53,6 +53,19 @@ function App() {
   }
 };  
 
+  const createDailyForecast = (forecastList: any[]) => {
+  return forecastList
+    .filter((item) => item.dt_txt.includes("12:00:00"))
+    .slice(0, 5)
+    .map((item) => ({
+      date: new Date(item.dt_txt).toLocaleDateString("ja-JP", {
+        weekday: "short",
+      }),
+      condition: item.weather[0].main,
+      temp: Math.round(item.main.temp),
+    }));
+};
+
   const [loading, setLoading] = useState(false);
   
   const handleSearch = async () => {
@@ -100,18 +113,7 @@ function App() {
         return;
       }
 
-      const dailyForecast = forecastData.list
-        .filter((item: any) => item.dt_txt.includes("12:00:00"))
-        .slice(0, 5)
-        .map((item: any) => ({
-          date: new Date(item.dt_txt).toLocaleDateString("ja-JP", {
-            weekday: "short",
-          }),
-          condition: item.weather[0].main,
-          temp: Math.round(item.main.temp),
-        }));
-
-    setForecast(dailyForecast);
+      setForecast(createDailyForecast(forecastData.list));
         } catch {
           setWeather(null);
           setForecast([]);
@@ -171,18 +173,7 @@ function App() {
             return;
           }
 
-        const dailyForecast = forecastData.list
-          .filter((item: any) => item.dt_txt.includes("12:00:00"))
-          .slice(0, 5)
-          .map((item: any) => ({
-            date: new Date(item.dt_txt).toLocaleDateString("ja-JP", {
-              weekday: "short",
-            }),
-            condition: item.weather[0].main,
-            temp: Math.round(item.main.temp),
-          }));
-
-        setForecast(dailyForecast);
+          setForecast(createDailyForecast(forecastData.list));
               } catch {
                 setWeather(null);
                 setError("通信に失敗しました");
