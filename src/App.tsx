@@ -124,54 +124,79 @@ function App() {
     const handleCurrentLocationSearch = () => {
     setLoading(true);
     setError("");
+    
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        try {
+          const apiKey = import.meta.env.VITE_WEATHER_API_KEY;
+          const { latitude, longitude } = position.coords;
 
-    if (!navigator.geolocation) {
-      setLoading(false);
-      setWeather(null);
-      setError("このブラウザでは位置情報が利用できません");
-      return;
-    }
+          const response = await fetch(
+            `https://api.openweathermap.org/data/2.5/weather?lat=${latitude}&lon=${longitude}&appid=${apiKey}&units=metric&lang=ja`
+          );
 
-  navigator.geolocation.getCurrentPosition(
-    async (position) => {
-      try {
-        const apiKey = import.meta.env.VITE_WEATHER_API_KEY;
-        const { latitude, longitude } = position.coords;
+          const data = await response.json();
 
-        const response = await fetch(
-          `https://api.openweathermap.org/data/2.5/weather?lat=${latitude}&lon=${longitude}&appid=${apiKey}&units=metric&lang=ja`
-        );
+          if (!response.ok) {
+            setWeather(null);
+            setError("現在地の天気を取得できませんでした");
+            return;
+          }
 
-        const data = await response.json();
+          setWeather({
+            name: data.name,
+            condition: data.weather[0].main,
+            description: data.weather[0].description,
+            temp: Math.round(data.main.temp),
+            humidity: data.main.humidity,
+            windSpeed: data.wind.speed,
+          });
 
-        if (!response.ok) {
-          setWeather(null);
-          setError("現在地の天気を取得できませんでした");
-          return;
-        }
+          const forecastResponse = await fetch(
+            `https://api.openweathermap.org/data/2.5/forecast?lat=${latitude}&lon=${longitude}&appid=${apiKey}&units=metric&lang=ja`
+          );
 
-        setWeather({
-          name: data.name,
-          condition: data.weather[0].main,
-          description: data.weather[0].description,
-          temp: Math.round(data.main.temp),
-          humidity: data.main.humidity,
-          windSpeed: data.wind.speed,
-        });
-      } catch {
-        setWeather(null);
-        setError("通信に失敗しました");
-      } finally {
-        setLoading(false);
-      }
-    },
-    () => {
-      setLoading(false);
-      setWeather(null);
-      setError("位置情報の取得が許可されませんでした");
-    }
-  );
-};
+          const forecastData = await forecastResponse.json();
+
+          if (!forecastResponse.ok) {
+            setForecast([]);
+            return;
+          }
+
+          if (!navigator.geolocation) {
+            setLoading(false);
+            setWeather(null);
+            setForecast([]);
+            setError("このブラウザでは位置情報が利用できません");
+            return;
+          }
+
+        const dailyForecast = forecastData.list
+          .filter((item: any) => item.dt_txt.includes("12:00:00"))
+          .slice(0, 5)
+          .map((item: any) => ({
+            date: new Date(item.dt_txt).toLocaleDateString("ja-JP", {
+              weekday: "short",
+            }),
+            condition: item.weather[0].main,
+            temp: Math.round(item.main.temp),
+          }));
+
+        setForecast(dailyForecast);
+              } catch {
+                setWeather(null);
+                setError("通信に失敗しました");
+              } finally {
+                setLoading(false);
+              }
+            },
+            () => {
+              setLoading(false);
+              setWeather(null);
+              setError("位置情報の取得が許可されませんでした");
+            }
+          );
+        };
 
   return (
     <div className="min-h-screen bg-sky-100 flex items-center justify-center p-4">
