@@ -2,6 +2,7 @@ type SearchFormProps = {
   city: string;
   onCityChange: (value: string) => void;
   onSearch: () => void;
+  onCurrentLocationSearch: () => void;
   loading: boolean;
 };
 
