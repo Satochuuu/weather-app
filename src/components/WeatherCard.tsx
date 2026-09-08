@@ -1,11 +1,11 @@
-import WeatherIcon from "./WeatherIcon.tsx";
-import type { WeatherData } from "../types/weather.ts";
+import WeatherIcon from "./WeatherIcon";
+import type { WeatherData } from "../types/weather";
 
-type Props = {
+type WeatherCardProps = {
   weather: WeatherData;
 };
 
-function WeatherCard({ weather }: Props) {
+function WeatherCard({ weather }: WeatherCardProps) {
   return (
     <div className="mt-6 rounded-xl bg-sky-50 p-6 text-center">
       <h2 className="text-2xl font-bold text-gray-800">
@@ -13,7 +13,10 @@ function WeatherCard({ weather }: Props) {
       </h2>
 
       <div className="my-4">
-        <WeatherIcon condition={weather.condition} />
+        <WeatherIcon
+          condition={weather.condition}
+          className="text-6xl"
+        />
       </div>
 
       <p className="text-xl text-gray-600">
