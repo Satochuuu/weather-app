@@ -1,35 +1,33 @@
 type WeatherIconProps = {
   condition: string;
+  className?: string;
 };
 
-function WeatherIcon({ condition }: WeatherIconProps) {
-  switch (condition) {
-    case "Clear":
-      return <div className="text-6xl">☀️</div>;
+function WeatherIcon({ condition, className = "" }: WeatherIconProps) {
+  const getIcon = () => {
+    switch (condition) {
+      case "Clear":
+        return "☀️";
+      case "Clouds":
+        return "☁️";
+      case "Rain":
+        return "🌧️";
+      case "Drizzle":
+        return "🌦️";
+      case "Thunderstorm":
+        return "⛈️";
+      case "Snow":
+        return "❄️";
+      case "Mist":
+      case "Fog":
+      case "Haze":
+        return "🌫️";
+      default:
+        return "🌤️";
+    }
+  };
 
-    case "Clouds":
-      return <div className="text-6xl">☁️</div>;
-
-    case "Rain":
-      return <div className="text-6xl">🌧️</div>;
-
-    case "Drizzle":
-      return <div className="text-6xl">🌦️</div>;
-
-    case "Thunderstorm":
-      return <div className="text-6xl">⛈️</div>;
-
-    case "Snow":
-      return <div className="text-6xl">❄️</div>;
-
-    case "Mist":
-    case "Fog":
-    case "Haze":
-      return <div className="text-6xl">🌫️</div>;
-
-    default:
-      return <div className="text-6xl">🌤️</div>;
-  }
+  return <span className={className}>{getIcon()}</span>;
 }
 
 export default WeatherIcon;

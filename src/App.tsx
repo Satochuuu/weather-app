@@ -2,37 +2,18 @@ import { useState } from "react";
 import SearchForm from "./components/SearchForm";
 import ForecastList from "./components/ForecastList";
 import WeatherCard from "./components/WeatherCard";
+import SearchHistory from "./components/SearchHistory";
 import {
   fetchWeatherByCity,
   fetchWeatherByCoords,
   fetchForecastByCity,
   fetchForecastByCoords,
 } from "./services/weatherApi";
-
-type WeatherData = {
-  name: string;
-  condition: string;
-  description: string;
-  temp: number;
-  humidity: number;
-  windSpeed: number;
-};
-
-type ForecastItem = {
-  date: string;
-  condition: string;
-  temp: number;
-};
-
-type ForecastApiItem = {
-  dt_txt: string;
-  weather: {
-    main: string;
-  }[];
-  main: {
-    temp: number;
-  };
-};
+import type {
+  WeatherData,
+  ForecastItem,
+  ForecastApiItem,
+} from "./types/weather";
 
 function App() {
   const [city, setCity] = useState("");
@@ -40,6 +21,15 @@ function App() {
   const [forecast, setForecast] = useState<ForecastItem[]>([]);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+
+  const [searchHistory, setSearchHistory] = useState<string[]>(() => {
+    try {
+      const savedHistory = localStorage.getItem("searchHistory");
+      return savedHistory ? JSON.parse(savedHistory) : [];
+    } catch {
+      return [];
+    }
+  });
 
   const createDailyForecast = (
     forecastList: ForecastApiItem[]
@@ -56,8 +46,28 @@ function App() {
       }));
   };
 
-  const handleSearch = async () => {
-    if (!city.trim()) {
+  const addSearchHistory = (searchedCity: string) => {
+    setSearchHistory((prevHistory) => {
+      const newHistory = [
+        searchedCity,
+        ...prevHistory.filter((history) => history !== searchedCity),
+      ].slice(0, 5);
+
+      localStorage.setItem("searchHistory", JSON.stringify(newHistory));
+
+      return newHistory;
+    });
+  };
+
+  const clearSearchHistory = () => {
+    setSearchHistory([]);
+    localStorage.removeItem("searchHistory");
+  };
+
+  const handleSearch = async (targetCity?: string) => {
+    const searchCity = (targetCity ?? city).trim();
+
+    if (!searchCity) {
       setWeather(null);
       setForecast([]);
       setError("都市名を入力してください");
@@ -68,7 +78,7 @@ function App() {
     setError("");
 
     try {
-      const weatherData = await fetchWeatherByCity(city);
+      const weatherData = await fetchWeatherByCity(searchCity);
 
       setWeather({
         name: weatherData.name,
@@ -79,8 +89,11 @@ function App() {
         windSpeed: weatherData.wind.speed,
       });
 
-      const forecastData = await fetchForecastByCity(city);
+      const forecastData = await fetchForecastByCity(searchCity);
+
       setForecast(createDailyForecast(forecastData.list));
+      setCity(searchCity);
+      addSearchHistory(searchCity);
     } catch {
       setWeather(null);
       setForecast([]);
@@ -127,6 +140,8 @@ function App() {
           );
 
           setForecast(createDailyForecast(forecastData.list));
+          setCity(weatherData.name);
+          addSearchHistory(weatherData.name);
         } catch {
           setWeather(null);
           setForecast([]);
@@ -154,7 +169,7 @@ function App() {
         <SearchForm
           city={city}
           onCityChange={setCity}
-          onSearch={handleSearch}
+          onSearch={() => handleSearch()}
           onCurrentLocationSearch={handleCurrentLocationSearch}
           loading={loading}
         />
@@ -169,6 +184,11 @@ function App() {
 
         <ForecastList forecast={forecast} />
 
+        <SearchHistory
+          histories={searchHistory}
+          onSelectCity={handleSearch}
+          onClear={clearSearchHistory}
+        />
       </div>
     </div>
   );

@@ -1,10 +1,5 @@
 import WeatherIcon from "./WeatherIcon";
-
-type ForecastItem = {
-  date: string;
-  condition: string;
-  temp: number;
-};
+import type { ForecastItem } from "../types/weather";
 
 type ForecastListProps = {
   forecast: ForecastItem[];
