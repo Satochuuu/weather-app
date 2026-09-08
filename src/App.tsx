@@ -1,6 +1,22 @@
 import { useState } from "react";
 import SearchForm from "./components/SearchForm";
 import ForecastList from "./components/ForecastList";
+import WeatherIcon from "./components/WeatherIcon";
+import {
+  fetchWeatherByCity,
+  fetchWeatherByCoords,
+  fetchForecastByCity,
+  fetchForecastByCoords,
+} from "./services/weatherApi";
+
+type WeatherData = {
+  name: string;
+  condition: string;
+  description: string;
+  temp: number;
+  humidity: number;
+  windSpeed: number;
+};
 
 type ForecastItem = {
   date: string;
@@ -20,44 +36,14 @@ type ForecastApiItem = {
 
 function App() {
   const [city, setCity] = useState("");
-
-  const [weather, setWeather] = useState<{
-      name: string;
-      condition: string;
-      description: string;
-      temp: number;
-      humidity: number;
-      windSpeed: number;
-    } | null>(null);
-
+  const [weather, setWeather] = useState<WeatherData | null>(null);
   const [forecast, setForecast] = useState<ForecastItem[]>([]);
-
   const [error, setError] = useState("");
-  
-  const getWeatherIcon = (condition: string) => {
-  switch (condition) {
-    case "Clear":
-      return "☀️";
-    case "Clouds":
-      return "☁️";
-    case "Rain":
-      return "🌧️";
-    case "Drizzle":
-      return "🌦️";
-    case "Thunderstorm":
-      return "⛈️";
-    case "Snow":
-      return "❄️";
-    case "Mist":
-    case "Fog":
-    case "Haze":
-      return "🌫️";
-    default:
-      return "🌤️";
-  }
-};
+  const [loading, setLoading] = useState(false);
 
-  const createDailyForecast = (forecastList: ForecastApiItem[]) => {
+  const createDailyForecast = (
+    forecastList: ForecastApiItem[]
+  ): ForecastItem[] => {
     return forecastList
       .filter((item) => item.dt_txt.includes("12:00:00"))
       .slice(0, 5)
@@ -70,133 +56,98 @@ function App() {
       }));
   };
 
-  const [loading, setLoading] = useState(false);
-  
   const handleSearch = async () => {
+    if (!city.trim()) {
+      setWeather(null);
+      setForecast([]);
+      setError("都市名を入力してください");
+      return;
+    }
+
     setLoading(true);
     setError("");
 
     try {
-      const apiKey = import.meta.env.VITE_WEATHER_API_KEY;
-
-      const response = await fetch(
-        `https://api.openweathermap.org/data/2.5/weather?q=${city}&appid=${apiKey}&units=metric&lang=ja`
-      );
-
-      const data = await response.json();
-      if (!response.ok) {
-        setWeather(null);
-        setError("都市名が見つかりませんでした");
-        return;
-      }
-
-      console.log(data);
+      const weatherData = await fetchWeatherByCity(city);
 
       setWeather({
-        name: data.name,
-        condition: data.weather[0].main,
-        description: data.weather[0].description,
-        temp: Math.round(data.main.temp),
-        humidity: data.main.humidity,
-        windSpeed: data.wind.speed,
+        name: weatherData.name,
+        condition: weatherData.weather[0].main,
+        description: weatherData.weather[0].description,
+        temp: Math.round(weatherData.main.temp),
+        humidity: weatherData.main.humidity,
+        windSpeed: weatherData.wind.speed,
       });
-      const forecastResponse = await fetch(
-        `https://api.openweathermap.org/data/2.5/forecast?q=${city}&appid=${apiKey}&units=metric&lang=ja`
-      );
 
-      const forecastData = await forecastResponse.json();
-
-      if (!forecastResponse.ok) {
-        setForecast([]);
-        if (!response.ok) {
-          setWeather(null);
-          setForecast([]);
-          setError("都市名が見つかりませんでした");
-          return;
-        }
-        return;
-      }
-
+      const forecastData = await fetchForecastByCity(city);
       setForecast(createDailyForecast(forecastData.list));
-        } catch {
-          setWeather(null);
-          setForecast([]);
-          setError("通信に失敗しました");
-        } finally {
-          setLoading(false);
-        }
-      };
+    } catch {
+      setWeather(null);
+      setForecast([]);
+      setError("天気情報を取得できませんでした");
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    const handleCurrentLocationSearch = () => {
+  const handleCurrentLocationSearch = () => {
     setLoading(true);
     setError("");
-    
+
+    if (!navigator.geolocation) {
+      setLoading(false);
+      setWeather(null);
+      setForecast([]);
+      setError("このブラウザでは位置情報が利用できません");
+      return;
+    }
+
     navigator.geolocation.getCurrentPosition(
       async (position) => {
         try {
-          const apiKey = import.meta.env.VITE_WEATHER_API_KEY;
           const { latitude, longitude } = position.coords;
 
-          const response = await fetch(
-            `https://api.openweathermap.org/data/2.5/weather?lat=${latitude}&lon=${longitude}&appid=${apiKey}&units=metric&lang=ja`
+          const weatherData = await fetchWeatherByCoords(
+            latitude,
+            longitude
           );
-
-          const data = await response.json();
-
-          if (!response.ok) {
-            setWeather(null);
-            setError("現在地の天気を取得できませんでした");
-            return;
-          }
 
           setWeather({
-            name: data.name,
-            condition: data.weather[0].main,
-            description: data.weather[0].description,
-            temp: Math.round(data.main.temp),
-            humidity: data.main.humidity,
-            windSpeed: data.wind.speed,
+            name: weatherData.name,
+            condition: weatherData.weather[0].main,
+            description: weatherData.weather[0].description,
+            temp: Math.round(weatherData.main.temp),
+            humidity: weatherData.main.humidity,
+            windSpeed: weatherData.wind.speed,
           });
 
-          const forecastResponse = await fetch(
-            `https://api.openweathermap.org/data/2.5/forecast?lat=${latitude}&lon=${longitude}&appid=${apiKey}&units=metric&lang=ja`
+          const forecastData = await fetchForecastByCoords(
+            latitude,
+            longitude
           );
-
-          const forecastData = await forecastResponse.json();
-
-          if (!forecastResponse.ok) {
-            setForecast([]);
-            return;
-          }
-
-          if (!navigator.geolocation) {
-            setLoading(false);
-            setWeather(null);
-            setForecast([]);
-            setError("このブラウザでは位置情報が利用できません");
-            return;
-          }
 
           setForecast(createDailyForecast(forecastData.list));
-              } catch {
-                setWeather(null);
-                setError("通信に失敗しました");
-              } finally {
-                setLoading(false);
-              }
-            },
-            () => {
-              setLoading(false);
-              setWeather(null);
-              setError("位置情報の取得が許可されませんでした");
-            }
-          );
-        };
+        } catch {
+          setWeather(null);
+          setForecast([]);
+          setError("現在地の天気情報を取得できませんでした");
+        } finally {
+          setLoading(false);
+        }
+      },
+      () => {
+        setLoading(false);
+        setWeather(null);
+        setForecast([]);
+        setError("位置情報の取得が許可されませんでした");
+      }
+    );
+  };
 
   return (
-    <div className="min-h-screen bg-sky-100 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-lg p-8 w-full max-w-md">
-        <h1 className="text-4xl font-bold text-sky-600 text-center mb-8">
+    <div className="flex min-h-screen items-center justify-center bg-sky-100 p-4">
+      <div className="w-full max-w-md rounded-2xl bg-white p-8 shadow-lg">
+        <h1 className="mb-8 text-center text-4xl font-bold text-sky-600">
           ☀️ Weather App
         </h1>
 
@@ -209,7 +160,7 @@ function App() {
         />
 
         {error && (
-          <p className="mt-4 text-center text-red-600 font-semibold">
+          <p className="mt-4 text-center font-semibold text-red-600">
             {error}
           </p>
         )}
@@ -220,8 +171,11 @@ function App() {
               {weather.name}
             </h2>
 
-            <div className="my-4 text-6xl">
-              {getWeatherIcon(weather.condition)}
+            <div className="my-4">
+              <WeatherIcon
+                condition={weather.condition}
+                className="text-6xl"
+              />
             </div>
 
             <p className="text-xl text-gray-600">
@@ -246,14 +200,12 @@ function App() {
                   {weather.windSpeed} m/s
                 </p>
               </div>
-    </div>
-  </div>
+            </div>
+          </div>
         )}
 
-        <ForecastList
-          forecast={forecast}
-          getWeatherIcon={getWeatherIcon}
-        />
+        <ForecastList forecast={forecast} />
+        
       </div>
     </div>
   );
